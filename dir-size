@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# get the size of a directory
+# usage: dir-size <directory>
+
+if [ -z "$1" ]; then
+    echo "usage: dir-size <directory>"
+    exit 1
+elif [ ! -d "$1" ]; then
+    echo "Directory does not exist"
+    exit 1
+elif [ $# -gt 1 ]; then
+    echo "usage: dir-size <directory>"
+    echo "Only one directory can be passed as argument"
+    exit 1
+fi
+
+# get the size of the directory
+dir_size=$(du -sh "$1" | cut -f1)
+
+# print the size
+echo "Size of $1: $dir_size"
+
+exit 0
