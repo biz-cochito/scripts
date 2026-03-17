@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 <remote> <mount_dir>"
+    exit 1
+fi
+
+remote="$1"
+mount_dir="$2"
+
+rclone mount $remote $mount_dir \
+--daemon \
+--vfs-cache-mode full \
+--vfs-cache-max-size 50G \
+--vfs-read-chunk-size-limit off \
+--vfs-read-ahead 1G \
+--tpslimit-burst 8 \
+--no-modtime \
+--no-checksum
+

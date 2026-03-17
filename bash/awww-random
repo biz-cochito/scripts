@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+WALLPAPERS_DIR="${HOME}/Wallpapers"
+
+DEFAULT_INTERVAL=30 # In seconds
+RESIZE_TYPE="crop"
+export AWWW_TRANSITION_FPS="${AWWW_TRANSITION_FPS:-60}"
+export AWWW_TRANSITION_STEP="${AWWW_TRANSITION_STEP:-2}"
+
+while true; do
+  find "$WALLPAPERS_DIR" -maxdepth 1 -type f |
+    while read -r img; do
+      echo "$(</dev/urandom tr -dc a-zA-Z0-9 | head -c 8):$img"
+    done |
+    sort -n | cut -d':' -f2- |
+    while read -r img; do
+      awww img --resize="$RESIZE_TYPE" --transition-type="wipe" "$img"
+      sleep "${2:-$DEFAULT_INTERVAL}"
+    done
+done
+
+exit 0

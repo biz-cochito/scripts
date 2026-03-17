@@ -1,0 +1,249 @@
+#!/usr/bin/env bash
+
+# Displays images in the terminal using available tools like
+# chafa or catimg. It supports recursive directory scanning and basic scaling.
+
+set -o errexit  # abort on nonzero exitstatus
+set -o nounset  # abort on unbound variable
+set -o pipefail # don't hide errors within pipes
+
+RECURSIVE_MODE=false
+REQUESTED_WIDTH=""
+REQUESTED_HEIGHT=""
+RENDER_TOOL=""
+PATHS_TO_PROCESS=()
+IMAGES_TO_PROCESS=()
+TMP_DIR=""
+
+function cleanup {
+  if [[ -n "${TMP_DIR}" && -d "${TMP_DIR}" ]]; then
+    rm -rf "${TMP_DIR}"
+  fi
+}
+
+# Trap signals for cleanup
+trap cleanup EXIT ERR
+
+function output_usage_info_and_exit {
+  cat <<USAGE_EOF
+termimg - A CLI tool to render images in your terminal.
+
+Usage: termimg [OPTIONS] [PATH...]
+
+This script scans the provided paths for image files and renders them directly
+within the terminal emulator using chafa or catimg.
+
+Parameters:
+  -r, --recursive   Recursively scan directories for image files.
+  -w, --width VAL   Set the target width for rendering.
+  -h, --height VAL  Set the target height for rendering.
+  --help            Display this help message and exit.
+
+Supported Formats:
+  JPEG, PNG, GIF, BMP, WEBP, and others supported by the rendering tool.
+
+Requirements:
+  One of the following tools must be installed:
+  - chafa (recommended)
+  - catimg
+USAGE_EOF
+  exit 0
+}
+
+function check_dependencies_and_select_tool {
+  if command -v chafa >/dev/null 2>&1; then
+    readonly RENDER_TOOL="chafa"
+  elif command -v catimg >/dev/null 2>&1; then
+    readonly RENDER_TOOL="catimg"
+  else
+    echo "Error: No supported rendering tool found (chafa or catimg)." >&2
+    exit 1
+  fi
+}
+
+function is_image_file_and_return_status {
+  local -r file_to_check="$1"
+  local -r extension="${file_to_check##*.}"
+  local -r lower_ext=$(echo "$extension" | tr '[:upper:]' '[:lower:]')
+
+  case "${lower_ext}" in
+  jpg | jpeg | png | gif | bmp | webp | tiff | svg)
+    return 0
+    ;;
+  *)
+    return 1
+    ;;
+  esac
+}
+
+function process_path_and_collect {
+  local -r current_path="$1"
+
+  if [[ -d "${current_path}" ]]; then
+    local find_cmd=("find" "${current_path}")
+    if [[ "${RECURSIVE_MODE}" == "false" ]]; then
+      find_cmd+=("-maxdepth" "1")
+    fi
+    find_cmd+=("-type" "f")
+
+    # Read find output line by line
+    while IFS= read -r found_file; do
+      if is_image_file_and_return_status "${found_file}"; then
+        IMAGES_TO_PROCESS+=("${found_file}")
+      fi
+    done < <("${find_cmd[@]}")
+  elif [[ -f "${current_path}" ]]; then
+    if is_image_file_and_return_status "${current_path}"; then
+      IMAGES_TO_PROCESS+=("${current_path}")
+    else
+      echo "Warning: '${current_path}' is not a recognized image file." >&2
+    fi
+  else
+    echo "Error: '${current_path}' is not a valid file or directory." >&2
+  fi
+}
+
+function render_images_in_grid {
+  if [[ ${#IMAGES_TO_PROCESS[@]} -eq 0 ]]; then
+    return 0
+  fi
+
+  if [[ "${RENDER_TOOL}" == "chafa" ]]; then
+    local -a cmd_args=("${RENDER_TOOL}" "--grid=4" "--label=on")
+    # Handle flexible size arguments for chafa
+    if [[ -n "${REQUESTED_WIDTH}" ]]; then
+      local size_arg="${REQUESTED_WIDTH}"
+      if [[ -n "${REQUESTED_HEIGHT}" ]]; then
+        size_arg+="x${REQUESTED_HEIGHT}"
+      fi
+      cmd_args+=("--size" "${size_arg}")
+    elif [[ -n "${REQUESTED_HEIGHT}" ]]; then
+      cmd_args+=("--size" "x${REQUESTED_HEIGHT}")
+    fi
+    cmd_args+=("${IMAGES_TO_PROCESS[@]}")
+    "${cmd_args[@]}"
+
+  elif [[ "${RENDER_TOOL}" == "catimg" ]]; then
+    local term_cols="${COLUMNS:-80}"
+    if [[ $term_cols -lt 20 ]]; then term_cols=80; fi
+    local req_width="${REQUESTED_WIDTH:-$((term_cols / 4 - 2))}"
+    if [[ "${req_width}" -lt 5 ]]; then
+      req_width=5
+    fi
+
+    TMP_DIR=$(mktemp -d)
+    local batch_size=4
+
+    for ((i = 0; i < ${#IMAGES_TO_PROCESS[@]}; i += batch_size)); do
+      local -a batch=("${IMAGES_TO_PROCESS[@]:i:batch_size}")
+      local -a files=()
+      local max_lines=0
+
+      for ((j = 0; j < ${#batch[@]}; j++)); do
+        local img="${batch[j]}"
+        local tmpfile="${TMP_DIR}/img_${i}_${j}.out"
+        catimg -w "${req_width}" "${img}" | sed 's/\x1B\[s//g; s/\x1B\[u//g; s/\x1B\[?25l//g; s/\x1B\[?25h//g' >"${tmpfile}"
+        files+=("${tmpfile}")
+
+        local lines=$(wc -l <"${tmpfile}")
+        if [[ $lines -gt $max_lines ]]; then max_lines=$lines; fi
+      done
+
+      # Pad shorter files with blank lines to align the paste output
+      for f in "${files[@]}"; do
+        local lines=$(wc -l <"$f")
+        local diff=$((max_lines - lines))
+        if [[ $diff -gt 0 ]]; then
+          for ((k = 0; k < diff; k++)); do echo "" >>"$f"; done
+        fi
+      done
+
+      paste "${files[@]}"
+
+      # Print the filenames below the images (up to 3 lines)
+      for ((line_idx = 0; line_idx < 3; line_idx++)); do
+        local has_content=false
+        local line_output=""
+        for ((j = 0; j < ${#batch[@]}; j++)); do
+          local img_name
+          img_name=$(basename "${batch[j]}")
+          local start_idx=$((line_idx * req_width))
+          local chunk="${img_name:$start_idx:$req_width}"
+          if [[ -n "$chunk" ]]; then
+            has_content=true
+          fi
+          # Add slight padding matching the tab spacing
+          printf -v padded_chunk "%-${req_width}s\t" "$chunk"
+          line_output+="$padded_chunk"
+        done
+
+        if [[ "$has_content" == "true" ]]; then
+          echo "$line_output"
+        fi
+      done
+      echo ""
+    done
+  fi
+}
+
+function parse_command_line_arguments {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -r | --recursive)
+      RECURSIVE_MODE=true
+      shift
+      ;;
+    -w | --width)
+      if [[ $# -lt 2 ]] || ! [[ "$2" =~ ^[0-9]+$ ]]; then
+        echo "Error: --width requires a numeric value." >&2
+        exit 1
+      fi
+      REQUESTED_WIDTH="$2"
+      shift 2
+      ;;
+    -h | --height)
+      if [[ $# -lt 2 ]] || ! [[ "$2" =~ ^[0-9]+$ ]]; then
+        echo "Error: --height requires a numeric value." >&2
+        exit 1
+      fi
+      REQUESTED_HEIGHT="$2"
+      shift 2
+      ;;
+    --help)
+      output_usage_info_and_exit
+      ;;
+    -*)
+      echo "Error: Unknown option '$1'. Use --help." >&2
+      exit 1
+      ;;
+    *)
+      PATHS_TO_PROCESS+=("$1")
+      shift
+      ;;
+    esac
+  done
+}
+
+function main {
+  parse_command_line_arguments "$@"
+
+  # Default to current directory if no paths provided
+  if [[ ${#PATHS_TO_PROCESS[@]} -eq 0 ]]; then
+    PATHS_TO_PROCESS+=(".")
+  fi
+
+  check_dependencies_and_select_tool
+
+  # Set read-only flags for configurations that are now finalized
+  readonly RECURSIVE_MODE
+  readonly REQUESTED_WIDTH
+  readonly REQUESTED_HEIGHT
+
+  for target_path in "${PATHS_TO_PROCESS[@]}"; do
+    process_path_and_collect "${target_path}"
+  done
+
+  render_images_in_grid
+}
+
+main "$@"

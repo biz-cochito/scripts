@@ -1,0 +1,10 @@
+#!/bin/bash
+cd /tmp
+while read line; do
+    url=$(echo $line | grep pic.twitter.com | sed 's;.*pic.twitter.com/;;')
+    if ! [[ -z $url ]]; then
+	wget "pic.twitter.com/$url"
+	imgfile=$(wget $(cat $url | grep "<img data-aria-label-part" | tr '"' '\t' | awk -F'\t' '{print $2}') 2>&1 | grep "saved" | awk '{print $6}')
+	~/.config/vifm/scripts/vifmimg draw 2 34 80 80 ${imgfile:1:-1}
+    fi
+done

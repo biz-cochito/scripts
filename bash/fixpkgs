@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# Find and reinstall Arch Linux packages with missing files
+
+LC_ALL=C.UTF-8 pacman -Qk 2>/dev/null | grep -v ' 0 missing files' | cut -d: -f1 |
+    while read -r package; do
+        pacman -S "$package" --noconfirm
+    done
+
+exit 0

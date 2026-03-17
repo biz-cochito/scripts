@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+# Downloads root dir
+SOURCE_DIR="$HOME/Downloads"
+
+# Target dirs
+IMAGES_DIR="$SOURCE_DIR/Images"
+VIDEOS_DIR="$SOURCE_DIR/Videos"
+DOCS_DIR="$SOURCE_DIR/Docs"
+ARCHIVES_DIR="$SOURCE_DIR/Archives"
+OTHERS_DIR="$SOURCE_DIR/Others"
+
+# Create target dirs if they don't exist
+mkdir -p "$IMAGES_DIR" "$VIDEOS_DIR" "$DOCS_DIR" "$ARCHIVES_DIR" "$OTHERS_DIR"
+
+# Move image files
+find "$SOURCE_DIR" -maxdepth 1 \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.webp" -o -iname "*.bmp" -o -iname "*.tiff" -o -iname "*.svg" \) -exec mv {} "$IMAGES_DIR" \;
+
+# Move video files
+find "$SOURCE_DIR" -maxdepth 1 \( -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.mov" -o -iname "*.avi" -o -iname "*.wmv" -o -iname "*.m4v" -o -iname "*.flv" -o -iname "*.ts" -o -iname "*.webm" \) -exec mv {} "$VIDEOS_DIR" \;
+
+# Move document files
+find "$SOURCE_DIR" -maxdepth 1 \( -iname "*.pdf" -o -iname "*.doc" -o -iname "*.docx" -o -iname "*.txt" -o -iname "*.rtf" \) -exec mv {} "$DOCS_DIR" \;
+
+# Move archive files
+find "$SOURCE_DIR" -maxdepth 1 \( -iname "*.zip" -o -iname "*.tar.gz" -o -iname "*.rar" \) -exec mv {} "$ARCHIVES_DIR" \;
+
+# Move any remaining files to Others directory
+find "$SOURCE_DIR" -maxdepth 1 -type f -exec mv {} "$OTHERS_DIR" \;
+
+echo "Files have been organized into '$IMAGES_DIR', '$VIDEOS_DIR', '$DOCS_DIR', '$ARCHIVES_DIR', and '$OTHERS_DIR'."
+
+exit 0
+
