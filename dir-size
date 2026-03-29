@@ -19,6 +19,6 @@ fi
 dir_size=$(du -sh "$1" | cut -f1)
 
 # print the size
-echo "Size of $1: $dir_size"
+echo "$dir_size"
 
 exit 0

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# usage: img-dimensions [OPTIONS]<image>
+
+if [ -z "$1" ]; then
+  echo "usage: img-dimensions <image>"
+  exit 1
+elif [ ! -f "$1" ]; then
+  echo "File does not exist"
+  exit 1
+elif [ $# -gt 1 ]; then
+  echo "usage: img-dimensions <image>"
+  echo "Only one image can be passed as argument"
+  exit 1
+fi
+
+img_dimensions=$(identify -format "%wx%h" "$1")
+
+# print the dimensions
+echo "$img_dimensions"
+
+exit 0

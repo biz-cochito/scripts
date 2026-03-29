@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+gum style \
+  --foreground 4 --border-foreground 6 --border double \
+  --align center --width 50 --margin "1 2" --padding "1 2" \
+  'Choose config to edit:'
+
+CHOICE=$(gum choose "hyprland" "waybar" "zsh")
+
+if [ "$CHOICE" == "zsh" ]; then
+  choose_zsh=$(gum file "$ZDOTDIR")
+fi
+# export aliases=($ZDOTDIR/aliases/*)
+
+# choose_waybar=$(gum choose "$XDG_CONFIG_HOME/waybar/config.jsonc" "$XDG_CONFIG_HOME/waybar/style.css")
+
+# gum choose "choose_zsh" "choose_waybar"
