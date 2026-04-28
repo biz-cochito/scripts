@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 
+pkill swaybg
+
+if ! pgrep -x "awww-daemon" >/dev/null; then
+    echo "Starting awww-daemon..."
+    awww-daemon &
+else
+    echo "awww-daemon already running."
+fi
+
 WALLPAPERS_DIR="${HOME}/Wallpapers"
 
 DEFAULT_INTERVAL=30 # In seconds
