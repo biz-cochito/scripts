@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+repos_list=$(gh repo ls | awk '{print $1}')
+
+for row in $repos_list; do
+	gh repo clone "$row"
+done
+
+exit 0
+
