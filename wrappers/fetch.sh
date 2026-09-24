@@ -2,6 +2,6 @@
 
 # echo ""
 
-fastfetch --config examples/27.jsonc --logo-padding-left 2
+fastfetch --config examples/19.jsonc --logo-padding-left 2
 
 exit 0

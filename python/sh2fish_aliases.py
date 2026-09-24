@@ -2,9 +2,11 @@
 Convert POSIX-style (bash/zsh/etc.) aliases to fish abbreviations.
 Usage: python3 aliases2fish.py <input_file> [output_file]
 """
+
 import re
 import sys
 import os
+
 
 class Color:
     RED = "\033[31m"
@@ -12,6 +14,7 @@ class Color:
     YELLOW = "\033[33m"
     BLUE = "\033[34m"
     RESET = "\033[0m"
+
 
 def escape_for_fish(cmd):
     """
@@ -72,7 +75,9 @@ def convert_to_fish(input_path, output_path):
                     if line.startswith("alias"):
                         outfile.write(f"# Manual review needed: {line}\n")
 
-        print(f"{Color.GREEN}Success: {Color.RESET}Auto-generated Fish abbreviations and functions appended to: {os.path.abspath(output_path)}")
+        print(
+            f"{Color.GREEN}Success: {Color.RESET}Auto-generated Fish abbreviations and functions appended to: {os.path.abspath(output_path)}"
+        )
 
     except FileNotFoundError:
         print(f"{Color.RED}Error: {Color.RESET}Input file '{input_path}' not found.")
@@ -84,13 +89,17 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python3 aliases2fish.py <input_file> [output_file]")
         sys.exit(1)
-        
+
     input_path = sys.argv[1]
-    
+
     if len(sys.argv) >= 3:
         output_path = sys.argv[2]
     else:
-        xdg_config_home = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
-        output_path = os.path.join(xdg_config_home, "fish", "conf.d", "converted_aliases.fish")
-        
+        xdg_config_home = os.environ.get(
+            "XDG_CONFIG_HOME", os.path.expanduser("~/.config")
+        )
+        output_path = os.path.join(
+            xdg_config_home, "fish", "conf.d", "converted_aliases.fish"
+        )
+
     convert_to_fish(input_path, output_path)
